@@ -130,10 +130,13 @@ while running:
 
         # Varsayılan ödül: pistte kaldığı için küçük pozitif ödül:
         reward = 0.1
+
+        # bu frame'de kazanılan toplan ödülü takip etmek için:
+        current_reward = reward
         
         # Nerdeyse hiç ilerlemiyorsa ceza ver:
         if distance_moved < 1:
-            reward -= 2
+            reward -= 1
 
         # Hedef checkpoint'i al:
         checkpoint = track.checkpoints[ next_checkpoint_index ]
@@ -149,6 +152,9 @@ while running:
 
             # Yaklaştıkça ödül, uzaklaştıkça ceza ver:
             reward += progress * 0.1
+
+            # Güncel reward değerini takip et:
+            current_reward = reward
         
         # Mesafeyi bir sonraki frame için sakla:
         previous_checkpoint_distance = current_checkpoint_distance
@@ -197,7 +203,7 @@ while running:
             last_checkpoint_index = next_checkpoint_index
 
             #Checkpoint ödülü ver:
-            reward += 500
+            reward += 100
             
             # Bir sonraki checkpoint'e geç:
             next_checkpoint_index += 1
@@ -213,6 +219,9 @@ while running:
 
                 next_checkpoint_index = 1
     
+        # Bu frame sonunda oluşan gerçek reward değerini göster:
+        current_reward = reward
+
         # q tablosunu güncelle:
         agent.update_q_value( state, action, reward, next_state )
         
@@ -341,6 +350,16 @@ while running:
     # Yazıyı ekrana çiz:
     screen.blit( steps_text, ( 40, 275 ) )
 
+    # Bu frame'deki reward değerini ekranda göster:
+    reward_text = font.render(
+        f"Reward: {current_reward:.2f}",
+        True,
+        (255,255,255)
+    )
+
+    # Reward bilgisini ekrana çiz:
+    screen.blit( reward_text, ( 40, 300 ) )
+
     # Araç pist üzerinde değilse uyarı yazısı göster:
     if not crashed and not track.is_car_on_track( car ):
 
@@ -351,11 +370,14 @@ while running:
         crashed = True
 
         # Çarpışma cezası:
-        reward = -100
+        reward = -150
         
 
         # Çarpışma sonrası state bilgisini al:
         next_state = track.get_sensor_distances( car ) + [ car.speed ]
+
+        # Bu frame sonunda oluşan gerçek reward değerini göster:
+        current_reward = reward
 
         # Çarpışmaya sebep olan aksiyonu cezalandır:
         agent.update_q_value( state, action, reward, next_state )
