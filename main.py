@@ -78,6 +78,9 @@ last_action = None
 # sıradaki hedef checkpoint index'i
 next_checkpoint_index = 1
 
+# En son başarıyla geçilen checkpoint index'ini tutar:
+last_checkpoint_index = 0
+
 # Hedef checkpoint'e olan önceki mesafe:
 previous_checkpoint_distance = None
 
@@ -176,11 +179,22 @@ while running:
             if crash_time == 0:
                 crash_time = pygame.time.get_ticks()
 
+        # Sıradaki beklenen checkpoint'i hesaplar:
+        expected_checkpoint_index = last_checkpoint_index + 1
+
+        # Eğer listenin sonuna gelindiyse tekrar 1.checkpoint 1 olur:
+        if expected_checkpoint_index >= len( track.checkpoints ):
+            expected_checkpoint_index = 1
+
+
         # Araç checkpoint'e ulaştı mı?
-        if track.reached_checkpoint( car, checkpoint ):
+        if track.reached_checkpoint( car, checkpoint ) and next_checkpoint_index == expected_checkpoint_index:
 
             # Geçilen checkpoint sayısını arttır:
             checkpoint_count += 1
+
+            # Bu checkpoint başarıyla geçildiği için son geçilen checkpoint olarak kaydet:
+            last_checkpoint_index = next_checkpoint_index
 
             #Checkpoint ödülü ver:
             reward += 500
@@ -381,6 +395,9 @@ while running:
 
             # Hedef checkpoint'i başlangıca döndür:
             next_checkpoint_index = 1
+
+            # Yeni episode başladığı için son geçilen checkpoint'i başlangıç durumuna al:
+            last_checkpoint_index = 0
 
             # Hedef checkpoint'e olan önceki mesafe:
             previous_checkpoint_distance = None
