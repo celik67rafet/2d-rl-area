@@ -1,0 +1,49 @@
+# Python
+
+**pycache**/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+
+.venv/
+venv/
+env/
+
+# VS Code
+
+.vscode/
+
+# PyCharm
+
+.idea/
+
+# Distribution
+
+build/
+dist/
+*.egg-info/
+
+# Logs
+
+*.log
+
+# OS Files
+
+.DS_Store
+Thumbs.db
+
+# Reinforcement Learning Data
+
+q_table.pkl
+
+# Training Artifacts
+
+checkpoints/
+models/
+weights/
+
+# Temporary Files
+
+*.tmp
+*.bak
