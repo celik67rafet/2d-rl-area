@@ -58,6 +58,14 @@ crash_time = 0
 # Mevcut denemenin skoru:
 score = 0
 
+# Bir episode içinde en fazla kaç frame/step çalışacağını belirler.
+# 60 FPS'te 3000 step yaklaşık 50 saniyeye denk gelir.
+MAX_EPISODE_STEPS = 3000
+
+# Mevcut episode içinde kaç step geçtiğini tutar.
+# Araç restelenince bu değer tekrar 0 yapılacak.
+episode_steps = 0
+
 # Geçilen checkpoint sayısı:
 checkpoint_count = 0
 
@@ -151,6 +159,22 @@ while running:
         
         # Araç pistte kaldığı her frame için skor arttır:
         score += 1
+
+        # Episode içinde bir step daha geçtiğini kaydeder.
+        # Bu sayaç timeout kontrolünde kullanılacak:
+        episode_steps += 1
+
+        # Episode çok uzun sürüyorsa aracı başarısız kabul et.
+        #Böylece ajan sonsuza kadar aynı yerde dolaşmaz.
+        if episode_steps >= MAX_EPISODE_STEPS:
+
+            # Timeout durumunu çarpışma gibi ele alacağız:
+            crashed = True
+
+            # Çarpışma zamanını kaydet.
+            # Böylece mevcut reset sistemi çalışmaya devam edecek:
+            if crash_time == 0:
+                crash_time = pygame.time.get_ticks()
 
         # Araç checkpoint'e ulaştı mı?
         if track.reached_checkpoint( car, checkpoint ):
@@ -292,6 +316,17 @@ while running:
 
     screen.blit( time_text, ( 40, 250 ) )
 
+    # Episode içinde kaç step geçtiğini göster.
+    # Timeout sisteminin doğru çalışıp çalışmadığını gözlemlemek için faydalıdır:
+    steps_text = font.render(
+        f"Episode Steps: {episode_steps}",
+        True,
+        (255,255,255)
+    )
+    
+    # Yazıyı ekrana çiz:
+    screen.blit( steps_text, ( 40, 275 ) )
+
     # Araç pist üzerinde değilse uyarı yazısı göster:
     if not crashed and not track.is_car_on_track( car ):
 
@@ -367,6 +402,10 @@ while running:
             
             # Skoru sıfırla:
             score = 0
+
+            # Yeni episode başlayacağı için step sayacını sıfırla:
+            # Böylece timeout süresi her denemede baştan başlar:
+            episode_steps = 0
 
     # Uygulamayı 60 FPS ile sınırlar:
     clock.tick(60)
