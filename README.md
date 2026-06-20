@@ -1,12 +1,8 @@
-# RL 2D Car
+# 2D RL Car Area
 
-Basit bir 2D yarış pistinde Q-Learning kullanan otonom araç projesi.
+Python ve Pygame kullanılarak geliştirilen 2D bir otonom araç öğrenme projesi.
 
-## Proje Amacı
-
-Bu projenin amacı, bir aracın sensör verilerini kullanarak pist üzerinde kendi kendine sürüş öğrenmesini sağlamaktır.
-
-Ajan başlangıçta tamamen rastgele hareket eder. Zamanla checkpoint ödülleri ve Q-Learning sayesinde pist üzerinde ilerlemeyi öğrenir.
+Araç, Q-Learning algoritması ile pist üzerinde hareket etmeyi, duvarlardan kaçınmayı ve checkpoint'leri doğru sırada geçerek tur tamamlamayı öğrenir.
 
 ---
 
@@ -14,229 +10,202 @@ Ajan başlangıçta tamamen rastgele hareket eder. Zamanla checkpoint ödülleri
 
 ### Araç Sistemi
 
-* 2D araç fiziği
-* Hızlanma
-* Direksiyon kontrolü
-* Sürtünme (friction)
-* Çarpışma algılama
+- 2D araç fizik sistemi
+- İleri ve geri hareket
+- Direksiyon kontrolü
+- Hız ve açı yönetimi
 
 ### Sensör Sistemi
 
-Araç çevresini algılamak için 7 adet mesafe sensörü kullanır.
+Araç çevresini 3 adet mesafe sensörü ile algılar:
 
-Sensör açıları:
+- Sol sensör
+- Ön sensör
+- Sağ sensör
 
-* -90°
-* -60°
-* -30°
-* 0°
-* +30°
-* +60°
-* +90°
-
-Her sensör pist dışına olan mesafeyi ölçer.
+Sensörler duvara olan mesafeyi ölçer ve bu bilgiler RL ajanının state bilgisi olarak kullanılır.
 
 ---
 
-## Reinforcement Learning
+## Reinforcement Learning Sistemi
 
-Algoritma:
+### Algoritma
 
-* Q-Learning
+- Q-Learning
 
-Durum (State):
+### State Bilgisi
 
-* 7 sensör mesafesi
-* araç hızı
+Ajan aşağıdaki bilgileri kullanarak karar verir:
 
-Aksiyonlar:
+- Sol sensör mesafesi
+- Ön sensör mesafesi
+- Sağ sensör mesafesi
+- Araç hızı
 
-| ID | Aksiyon   |
-| -- | --------- |
-| 0  | Bekle     |
-| 1  | Gaz       |
-| 2  | Sola dön  |
-| 3  | Sağa dön  |
-| 4  | Gaz + Sol |
-| 5  | Gaz + Sağ |
+State alanı küçültmek için değerler kategorilere ayrılır:
 
-Toplam aksiyon sayısı:
+- 0 → Çok yakın
+- 1 → Yakın
+- 2 → Uzak
 
-```text
-6
-```
+---
+
+## Aksiyonlar
+
+Ajan toplam 6 farklı aksiyon seçebilir:
+
+| Aksiyon | Açıklama |
+|---|---|
+| 0 | İleri |
+| 1 | Geri |
+| 2 | Sola dön |
+| 3 | Sağa dön |
+| 4 | İleri + sola dön |
+| 5 | İleri + sağa dön |
+
+---
+
+## Q-Learning Parametreleri
+
+| Parametre | Değer |
+|---|---|
+| Learning Rate | 0.1 |
+| Discount Factor (Gamma) | 0.95 |
+| Epsilon | 0.2 |
+| Minimum Epsilon | 0.01 |
+| Epsilon Decay | 0.999 |
 
 ---
 
 ## Reward Sistemi
 
-### Pozitif Ödüller
-
-Pist üzerinde kalmak:
-
-```text
-+0.1
-```
-
-Checkpoint geçmek:
-
-```text
-+500
-```
-
-Tur tamamlamak:
-
-```text
-+1000
-```
-
-Checkpoint'e yaklaşmak:
-
-```text
-progress * 0.1
-```
-
-### Negatif Ödüller
-
-Hareketsiz kalmak:
-
-```text
--2
-```
-
-Pist dışına çıkmak:
-
-```text
--100
-```
+| Durum | Ödül |
+|---|---|
+| Pist üzerinde kalmak | +0.1 |
+| Checkpoint'e yaklaşmak | Mesafeye göre pozitif/negatif |
+| Checkpoint geçmek | +100 |
+| Tur tamamlamak | +1000 |
+| Hareketsiz kalmak | -1 |
+| Pist dışına çıkmak | -150 |
 
 ---
 
-## Checkpoint Sistemi
+## Pist Sistemi
 
-Araç checkpointleri sırayla geçmelidir.
+Pist:
 
-Mevcut checkpoint sayısı:
+- Dış sınır
+- İç boşluk
+- Checkpoint çizgilerinden oluşur
 
-```text
-6
-```
+Checkpoint sistemi:
 
-Her checkpoint geçildiğinde:
-
-* ödül kazanılır
-* sonraki checkpoint hedef olur
-
-Son checkpoint tamamlanınca:
-
-* tur sayısı artar
-* başlangıç checkpointine dönülür
+- Checkpoint'ler sıralı takip edilir
+- Bir checkpoint geçildiğinde bir sonraki checkpoint hedef olur
+- Tur tamamlandığında sayaç artar
 
 ---
 
-## Öğrenme Parametreleri
+## Episode Sistemi
 
-Learning Rate:
+Her eğitim denemesi bir episode olarak değerlendirilir.
 
-```text
-0.1
-```
+Özellikler:
 
-Discount Factor:
-
-```text
-0.95
-```
-
-Başlangıç Epsilon:
-
-```text
-0.2
-```
-
-Minimum Epsilon:
-
-```text
-0.01
-```
-
-Epsilon Decay:
-
-```text
-0.999
-```
+- Maksimum 3000 step sınırı
+- Timeout durumunda otomatik reset
+- Çarpışma sonrası otomatik reset
+- Episode sonunda epsilon azaltma
+- Episode skor takibi
 
 ---
 
-## Kaydedilen Veriler
+## Eğitim ve Debug Bilgileri
 
-Program kapanırken otomatik kaydedilir:
+Ekranda aşağıdaki bilgiler gösterilir:
 
-* Q Table
-* Best Score
-* Epsilon
+- Sensör değerleri
+- Mevcut skor
+- En iyi skor
+- Öğrenilen state sayısı
+- Son seçilen aksiyon
+- Hedef checkpoint
+- Geçilen checkpoint sayısı
+- Tamamlanan tur sayısı
+- Epsilon değeri
+- Geçen süre
+- Episode step sayısı
+- Anlık reward değeri
 
-Dosya:
+---
 
-```text
-q_table.pkl
-```
+## Kayıt Sistemi
+
+Program kapanırken otomatik olarak:
+
+- Q-Table kaydedilir
+- En iyi skor kaydedilir
+- Epsilon değeri kaydedilir
+
+Program tekrar açıldığında:
+
+- Önceki öğrenme yüklenir
+- Eğitim kaldığı yerden devam eder
 
 ---
 
 ## Tamamlanan Geliştirmeler
 
-* [x] Araç hareket sistemi
-* [x] Sensör sistemi
-* [x] Çarpışma algılama
-* [x] Q-Learning
-* [x] Checkpoint sistemi
-* [x] Tur sistemi
-* [x] Progress reward
-* [x] Q-table kaydetme/yükleme
-* [x] 6 aksiyon sistemi
-* [x] State discretization
+- [x] Araç hareket sistemi
+- [x] Sensör sistemi
+- [x] Pist ve çarpışma sistemi
+- [x] Q-Learning altyapısı
+- [x] State discretization
+- [x] 6 aksiyon sistemi
+- [x] Q-Table kayıt/yükleme
+- [x] Checkpoint sistemi
+- [x] Tur sistemi
+- [x] Progress reward
+- [x] Episode timeout sistemi
+- [x] Reward tuning
+- [x] Eğitim debug ekranı
 
 ---
 
-## Yapılacaklar
+## Yapılacak Geliştirmeler
 
-### Kısa Vadeli
-
-* [ ] Episode timeout
-* [ ] Checkpoint sırası doğrulama
-* [ ] Reward tuning
-* [ ] Daha iyi epsilon stratejisi
-
-### Orta Vadeli
-
-* [ ] Daha karmaşık pist
-* [ ] Birden fazla başlangıç pozisyonu
-* [ ] Geri gitme cezası
-* [ ] Hız ödülü
-
-### Uzun Vadeli
-
-* [ ] Deep Q Network (DQN)
-* [ ] PyTorch entegrasyonu
-* [ ] Model checkpoint sistemi
-* [ ] Eğitim istatistikleri grafikleri
-* [ ] Farklı pistlerde test
+- [ ] Daha iyi epsilon stratejisi
+- [ ] Daha karmaşık pist
+- [ ] Birden fazla başlangıç pozisyonu
+- [ ] Geri gitme cezası
+- [ ] Hız ödülü
+- [ ] DQN geçişi
+- [ ] PyTorch entegrasyonu
+- [ ] Model checkpoint sistemi
+- [ ] Eğitim istatistikleri grafikleri
+- [ ] Farklı pistlerde test
 
 ---
 
-## Son Durum
+## Teknolojiler
 
-Proje şu anda çalışan bir Q-Learning ajanına sahiptir.
+- Python 3
+- Pygame
+- Q-Learning
+- Pickle
 
-Ajan:
+---
 
-* checkpoint geçebilmektedir
-* tur tamamlayabilmektedir
-* geçmiş öğrenmesini saklayabilmektedir
+## Çalıştırma
 
-Bir sonraki büyük hedef:
+```bash
+pip install pygame
 
-```text
-Q-Learning → DQN geçişi
+python main.py
 ```
+
+---
+
+## Amaç
+
+Bu proje, basit bir Q-Learning ajanının 2D bir ortamda kendi kendine araç sürmeyi öğrenmesini amaçlamaktadır.
