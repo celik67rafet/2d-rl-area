@@ -131,6 +131,14 @@ while running:
         # Varsayılan ödül: pistte kaldığı için küçük pozitif ödül:
         reward = 0.1
 
+        # Geri gitme cezası:
+        if action == 1:
+            reward -= 2.0
+
+        # Hız ödülü:
+        if car.speed > 0:
+            reward += car.speed * 0.05
+
         # bu frame'de kazanılan toplan ödülü takip etmek için:
         current_reward = reward
         
