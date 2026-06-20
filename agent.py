@@ -170,8 +170,8 @@ class Agent:
         except FileNotFoundError:
             pass
 
-    # Her bölüm sonunda epsilonu azalt:
-    def decay_epsilon( self ):
+    # Her bölüm sonunda epsilon değerini, alınan skora göre dinamik olarak azalt:
+    def decay_epsilon( self, score ):
 
         # Minimum epsilon sınırı:
         min_epsilon = 0.01
@@ -179,9 +179,19 @@ class Agent:
         # Azaltma oranı:
         decay_rate = 0.999
 
+        # Eğer ajan yüksek bir skor aldıysa ( örneğin 500'den büyük ), ortamı iyi öğrenmeye başlamış demektir.
+        if score > 500:
+            decay_rate = 0.995
+
+        #Eğer ajan hemen kaza yaptıysa ( örn score 100'den küçükse ) pisti yeterince öğrenmemiş demektr:
+        elif score < 100:
+            decay_rate = 0.999
+
         # Epsilon'u azalt:
         self.epsilon *= decay_rate
 
         # Alt sınır kontrolü:
         if self.epsilon < min_epsilon:
+
+            # Epsilon'u minimum değerde sabitliyoruz ( sınırı koruyoruz ):
             self.epsilon = min_epsilon

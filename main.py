@@ -436,8 +436,8 @@ while running:
             # Episode skorunu ajana bildir:
             agent.learn_from_episode( score )
 
-            # keşif oranını azalt:
-            agent.decay_epsilon()
+            # yeni stratejiye göre keşif oranını alınan skora göre güncelliyoruz:
+            agent.decay_epsilon( score )
             
             # Skoru sıfırla:
             score = 0
