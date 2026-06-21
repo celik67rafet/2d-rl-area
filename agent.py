@@ -1,248 +1,129 @@
-# Rastgele aksiyon seçmek için random modülünü içe aktar:
+import torch
 import random
-
-# Grafikleri çizmek için matplotlib kütüphanesini içe aktar:
+import os
+from collections import deque
 import matplotlib.pyplot as plt
 
-# Q-table'ı dosyaya kaydetmek ve dosyadan okumak için pickle modülünü içe aktar:
-import pickle
+# model.py dosytasından az önce oluşturduğumuz Beyin ve Antrenörü içe aktarıyoruz:
+from model import Linear_QNet, QTrainer
+
+# DQM Hiperparametreleri ( Ayarları )
+MAX_MEMORY = 100_100 # Hafızada tutulacak maksimum adım sayısı
+BATCH_SIZE = 1000 # Bölüm sonunda hafızadan rastgele çekilip öğrenilecek anı sayısı
+LR = 0.001 # Öğrenme hızı ( Learning Rate )
 
 class Agent:
-    # Ajan sınıfını başlat:
-    def __init__(self):
-        # Ajanın seçebileceği aksiyon sayısı:
-        self.action_count = 6
+    def __init__( self ):
+        self.epsilon = 1.0 # Başlangıçta %100 rastgele ( Keşif )
+        self.epsilon_decay = 0.99 # Rastgeleliğin azalma hızı ( Artık daha hızlı azaltıyoruz )
+        self.epsilon_min = 0.01 # Rastgelelik en az %1'e düşebilir
+        self.gamma = 0.95 # Gelecekteli ödüllerin önemi ( Discount Factor )
 
-        # Ajanın gördüpü en iyi skor:
+        # Ajanın anılarını tutacağı hafıza ( Dolduğunda en eski anıları otomatik siler )
+        self.memory = deque( maxlen = MAX_MEMORY )
+
+        # YAPAY SİNİR AĞI ( BEYİN ) OLUŞTURULOR:
+        # GİRDİ: 8 ( 7 Sensör + 1 Hız )
+        # Gizli Katman: 256 Nöron
+        # ÇIKTI: 6 ( Yapılabilecek 6 farklı aksiyon )
+        self.model = Linear_QNet( 8, 256, 6 )
+
+        # ANTRENÖR OLUŞTURULUYOR:
+        self.trainer = QTrainer( self.model, lr = LR, gamma = self.gamma )
+
+        # İstatistikler için değişkenler:
         self.best_score = 0
-
-        # Q-Learning Table:
-        self.q_table = {}
-        
-        # Eğitim istatikstiklerini tutacağımız geçmiş listeleri:
         self.score_history = []
-
         self.epsilon_history = []
 
-        # Keşif oranı:
-        self.epsilon = 0.2
+    # O anki adımı anında ( tekil olarak ) öğren ve hafızaya kaydet:
+    def update_q_value( self, state, action, reward, next_state, done=False ):
 
-        # Q-table kayıt dosyası:
-        self.q_table_file = "q_table.pkl"
+        # 1. Kısa vadeli hafıza ( O anki tek adımı öğren )
+        self.trainer.train_step( state, action, reward, next_state, done )
 
-        # öğrenme katsayısı ( learning rate )
-        self.learning_rate = 0.1
+        # 2. Bu deneyimi gelecekte tekrar hatırlamak üzere hafızaya kaydet:
+        self.memory.append(( state, action, reward, next_state, done ))
 
-        # Gelecekteki ödüllerin önemi ( discount factor )
-        self.discount_factor = 0.95
-
-    # Ham sensör mesafelerini Q-Learning için basit kategorilere çevir:
-    def discretize_state( self, state ):
-        # Ayrıklaştırılmış state listesi:
-        discrate_state = []
-
-        # Sensörler ve hız bilgisini ayır:
-        sensor_values = state[:-1]
-        speed = state[-1]
-
-        # Her sensör mesafesini işle:
-        for distance in sensor_values:
-
-            # Duvar çok yakınsa:
-            if distance < 50:
-                discrate_state.append(0)
-
-            # Duvar yakınsa:
-            elif distance < 100:
-                discrate_state.append(1)
-
-            # Duvar uzaktaysa:
-            else:
-                discrate_state.append(2)
-
-        # Hız bilgisini ayrıklaştır:
-        if speed < 1:
-            discrate_state.append(0)
-        elif speed <3:
-            discrate_state.append(1)
+    # Bölüm ( Episode ) bittiğinde hafızadaki eski anılardan toplu ders çıkar:
+    def train_kong_memory( self ):
+        # Hafızada yeterli anı varsa BATCH_SIZE kadar rastgele örnek al, yoksa hepsini al
+        if len( self.memory ) > BATCH_SIZE:
+            mini_sample = random.sample( self.memory, BATCH_SIZE )
         else:
-            discrate_state.append(2)
+            mini_sample = self.memory
 
-        # Listeyi tuple olarak döndür: çünkü dictionary key olarak kullanılacak
-        return tuple( discrate_state ) 
+        # Alınan rastgele anıları gruplarına göre ayır ( Örn: Tüm durumlar bir araya, Ödüller bir araya )
+        states, actions, rewards, next_states, dones = zip( *mini_sample )
 
-    # Şimdilik rastgele aksiyon seç:
-    def choose_action(self, state):
-        
-        # Ham state'i ayrık state'e çevir:
-        discrete_state = self.discretize_state( state )
+        # Antrenöre bu toplu anıları ver ve beyni ( ağırlıkları ) güncelle
+        self.trainer.train_step( states, actions, rewards, next_states, dones )
 
-        # Epsilon ihtimaliyle rastgele aksiyon seç:
+    # Duruma bakarak bir aksiyon seç ( Epsilon-Greedy ):
+    def choose_action( self, state ):
+        # Rastgele ( Keşif ) mi, yoksa Model ( Sömürü ) mi kullanılacak?
         if random.random() < self.epsilon:
-            return random.randint( 0, self.action_count - 1 )
+            action = random.randint( 0, 5 ) # Rastgele bir aksiyon seç
+        else:
+            # Durum verisini ( listeyi ) PyTorch'un anlayacağı Tensor formatına çevir:
+            state_tensor = torch.tensor( state, dtype = torch.float )
 
-        # Bu state için Q değerlerini al:
-        q_values = self.get_q_values( discrete_state )
+            # Veriyi sinir ağına ( beyne ) yolla ve tahminleri ( Q-değerlerini ) al:
+            prediction = self.model( state_tensor )
 
-        # En yüksek Q değerine sahip aksiyonu seç:
-        best_action = q_values.index( max( q_values ) )
+            # En büyük Q-değerine sahip ( en avantajlı ) aksiyonun index'ini seç:
+            action = torch.argmax( prediction ).item()
 
-        # En iyi aksiyonu döndür:
-        return best_action
-
-    # Episode sonunda skoru değerlendir:
+        return action
+    
+    # Her bölüm sonunda rastgelelik oranını biraz azalt:
+    def decay_epsilon( self, score ):
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        
+    # Bölüm bittiğinde uzun hafızayı eğit ve istatistikleri kaydet:
     def learn_from_episode( self, score ):
+        # Bölüm bittiği için geçmiş anılardan toplu bir eğitim ( Experience Replay ) yap
+        self.train_kong_memory()
 
-        # Mevcut skoru geçmiş listesine ekle:
+        # İstatistikleri kaydet:
         self.score_history.append( score )
-
-        # O anki epsilon değerini de geçmiş listesine ekle:
         self.epsilon_history.append( self.epsilon )
 
-        # Eğer bu skoru şimdiye kadarki en iyi skorsa kaydet:
+        # En iyi skoru güncelle:
         if score > self.best_score:
             self.best_score = score
 
-    # Verilen state içi Q değerlerini al:
-    def get_q_values( self, state ):
+    # Öğrenilmiş ağırlıkları ( Beyni ) kaydet:
+    def save_q_table( self, filename="model.pth" ):
+        self.model.save( filename )
 
-        # State daha önce görülmediyse tabloya ekle:
-        if state not in self.q_table:
-            self.q_table[state] = [0] * self.action_count
+    # Önceden öğrenilmiş beyni yükle:
+    def load_q_table( self, filename = "model.pth" ):
+        path = os.path.join('./model', filename)
+        if os.path.exists( path ):
+            self.model.load_state_dict( torch.load( path ) )
+            self.model.eval() # Modeli test/kullanım moduna al
+            print("Önceki öğrenmeler ( Yapay Sinir Ağı ) başarıyla yüklendi!")
 
-        # State'e ait aksiyon değerlerini döndür:
-        return self.q_table[ state ]
-    
-    # Q-Learning tablosunu güncelle:
-    def update_q_value(
-            self,
-            state,
-            action,
-            reward,
-            next_state
-    ):
-        # State'leri ayrık hale getir:
-        state = self.discretize_state( state )
-        next_state = self.discretize_state( next_state )
-
-        # Mevcut state'in q değerlerini al:
-        q_values = self.get_q_values( state )
-
-        # Sonraki state'in q değerlerini al:
-        next_q_values = self.get_q_values( next_state )
-
-        # Mevcut Q değerleri:
-        current_q = q_values[ action ]
-
-        # Sonraki state'teki en iyi Q değeri:
-        max_next_q = max( next_q_values )
-
-        # Q-Learning hedef değeri:
-        target_q = reward + (
-
-            self.discount_factor * max_next_q
-
-        )
-
-        # q değerini güncelle:
-        q_values[action] = current_q + (
-
-            self.learning_rate * ( target_q - current_q )
-
-        )
-
-    # Q-table'ı dosyaya kaydet:
-    def save_q_table( self, filename = None ):
-
-        # Eğer özel bir dosya adı belirtilmediyse, varsayılan kayıt dosyasını kullan:
-        if filename is None:
-            filename = self.q_table_file
-
-        #Kaydedilecek verileri bir sözlük ( dictionary ) içinde topla:
-        data = {
-            "q_table": self.q_table,
-            "best_score": self.best_score,
-            "epsilon": self.epsilon
-        }
-
-        # Belirlenen dosyayı yazma ( "wb" - write binary ) modunda aç:
-        with open( filename, "wb" ) as file:
-
-            # Verileri dosyaya yazdır:
-            pickle.dump( data, file )
-
-
-
-
-    # Q-table'ı dosyadan yükle:
-    def load_q_table( self ):
-        # Dosya yoksa hiçbir şey yapma:
-        try:
-
-            #Dosyayı okuma modunda aç:
-            with open( self.q_table_file , "rb" ) as file:
-
-                # Q-table'ı yükle:
-                data = pickle.load( file )
-
-                self.q_table = data["q_table"]
-                self.best_score = data["best_score"]
-                self.epsilon = data.get("epsilon", self.epsilon)
-            
-        # Dosya bulunamazsa ilk çalıştırma kabul et:
-        except FileNotFoundError:
-            pass
-
-    # Her bölüm sonunda epsilon değerini, alınan skora göre dinamik olarak azalt:
-    def decay_epsilon( self, score ):
-
-        # Minimum epsilon sınırı:
-        min_epsilon = 0.01
-
-        # Azaltma oranı:
-        decay_rate = 0.999
-
-        # Eğer ajan yüksek bir skor aldıysa ( örneğin 500'den büyük ), ortamı iyi öğrenmeye başlamış demektir.
-        if score > 500:
-            decay_rate = 0.995
-
-        #Eğer ajan hemen kaza yaptıysa ( örn score 100'den küçükse ) pisti yeterince öğrenmemiş demektr:
-        elif score < 100:
-            decay_rate = 0.999
-
-        # Epsilon'u azalt:
-        self.epsilon *= decay_rate
-
-        # Alt sınır kontrolü:
-        if self.epsilon < min_epsilon:
-
-            # Epsilon'u minimum değerde sabitliyoruz ( sınırı koruyoruz ):
-            self.epsilon = min_epsilon
-
-    # Eğitim istatistiklerini ekrana grafik olarak çiz:
+    # Eğitim grafiğini çiz ( Eski sistemle birebir aynı )
     def plot_statistics( self ):
 
-        # Eğer veri yoksa ( henüz ilk episode bitmediyse ) çizim yapma:
         if not self.score_history:
             return
         
-        # İki alt grafikli ( skor ve epsilon ) yeni bir pencere oluştur:
         fig, ( ax1, ax2 ) = plt.subplots( 2, 1, figsize = ( 10, 8 ) )
 
-        # 1. Grafik: Bölüm başına alınan skorlar ( Mavi çizgi )
         ax1.plot( self.score_history, color = 'blue' )
         ax1.set_title( "Bolum ( Episode ) Basina Skor" )
         ax1.set_ylabel( "Skor" )
-        ax1.grid( True ) # Arka plana ızgara ekle
+        ax1.grid( True )
 
-        # 2. Grafik: Epsilon'un zamanla azalmasi ( Kırmızı çizgi )
-        ax2.plot( self.epsilon_history, color='red' )
+        ax2.plot( self.epsilon_history, color = 'red' )
         ax2.set_title( "Epsilon ( Kesif Orani ) Degisimi" )
-        ax2.set_xlabel( "Bolum (Episode)" )
+        ax2.set_xlabel( "Epsilon" )
+        ax2.set_ylabel( "Epsilon" )
         ax2.grid( True )
 
-        # Grafikleri birbiriyle çakışmayacak şekilde düzenle:
         plt.tight_layout()
-
-        # Çizilen grafiği ekranda göster:
         plt.show()

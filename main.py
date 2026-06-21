@@ -240,7 +240,7 @@ while running:
         current_reward = reward
 
         # q tablosunu güncelle:
-        agent.update_q_value( state, action, reward, next_state )
+        agent.update_q_value( state, action, reward, next_state, False )
         
     # Pisti ekrana çiz:
     track.draw( screen, next_checkpoint_index )
@@ -282,7 +282,7 @@ while running:
 
     # Öğrenilen state sayısını göster:
     states_text = font.render(
-        f"Known States: {len( agent.q_table )}",
+        f"Memory Size: {len( agent.memory )}",
         True,
         ( 255, 255, 255 )
     )
@@ -397,7 +397,7 @@ while running:
         current_reward = reward
 
         # Çarpışmaya sebep olan aksiyonu cezalandır:
-        agent.update_q_value( state, action, reward, next_state )
+        agent.update_q_value( state, action, reward, next_state, True )
 
         if crash_time == 0:
             crash_time = pygame.time.get_ticks()
