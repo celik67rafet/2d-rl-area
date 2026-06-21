@@ -453,6 +453,16 @@ while running:
             # Son seçilen aksiyon
             last_action = None
 
+            # CHECKPOINT SİSTEMİ:
+            # Eğer ajan şu ana kadarki en iyi skorunu geçtiyse, bu başarılı durumu hemen yedekle:
+            if score > agent.best_score:
+
+                # Terminal ekranına bilgi yazdır:
+                print( f"Yeni en iyi skor ({score})! Model yedekleniyor..." )
+
+                # Sadece bu başarılı modele özel bir isimli Q-tablosunu kaydet:
+                agent.save_q_table("best_model.pkl")
+
             # Episode skorunu ajana bildir:
             agent.learn_from_episode( score )
 

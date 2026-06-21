@@ -152,19 +152,27 @@ class Agent:
         )
 
     # Q-table'ı dosyaya kaydet:
-    def save_q_table( self ):
+    def save_q_table( self, filename = None ):
 
+        # Eğer özel bir dosya adı belirtilmediyse, varsayılan kayıt dosyasını kullan:
+        if filename is None:
+            filename = self.q_table_file
+
+        #Kaydedilecek verileri bir sözlük ( dictionary ) içinde topla:
         data = {
             "q_table": self.q_table,
             "best_score": self.best_score,
             "epsilon": self.epsilon
         }
 
-        # Dosyayı yazma modunda aç:
-        with open( self.q_table_file , "wb" ) as file:
+        # Belirlenen dosyayı yazma ( "wb" - write binary ) modunda aç:
+        with open( filename, "wb" ) as file:
 
-            # Q-table'ı dosyaya yaz:
+            # Verileri dosyaya yazdır:
             pickle.dump( data, file )
+
+
+
 
     # Q-table'ı dosyadan yükle:
     def load_q_table( self ):
