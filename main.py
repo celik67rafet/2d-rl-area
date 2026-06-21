@@ -40,6 +40,15 @@ atexit.register( agent.save_q_table )
 # Pist nesnesini oluştur:
 track = Track()
 
+# Pistten rastgele bir başlangıç noktası al ( x, y ve açı ):
+start_x, start_y, start_angle = track.get_random_start_position()
+
+# Araç nesnesini rastgele gelen x ve y değerleriyle oluşturuyoruz:
+car = Car( start_x, start_y )
+
+# Aracın yönünü de rastgele gelen açıya ayarlıyoruz:
+car.angle = start_angle
+
 # Araç nesnesini oluşturuyoruz:
 car = Car( 220, 360 )
 
@@ -415,7 +424,10 @@ while running:
         if elapsed >= 1000:
 
             # Aracı başlangıç noktasına döndür:
-            car.reset( 220, 360, 270 )
+            start_x, start_y, start_angle = track.get_random_start_position()
+
+            # Aracı bu yeni noktaya ve yeni açıya döndür:
+            car.reset( start_x, start_y, start_angle )
 
             # Çarpışma durumunu temizle:
             crashed = False

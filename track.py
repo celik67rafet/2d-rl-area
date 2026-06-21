@@ -4,6 +4,9 @@ import pygame
 # math import
 import math
 
+# Rastgele seçim için:
+import random
+
 class Track:
     # Pist sınıfını başlat:
     def __init__( self ):
@@ -18,6 +21,14 @@ class Track:
             ((940, 300), (1135, 300)),
             ((800, 420), (800, 635)),
             ((450, 420), (450, 635)), 
+        ]
+
+        # Alternatif başlangıç noktaları ( x, y ,açı ):
+        self.start_positions = [
+            ( 220, 360, 270 ), # Orjinal başlangıç noktamız
+            ( 260, 360, 270 ), # Biraz daha sağda
+            ( 180, 360, 270 ), # Biraz daha solda
+            ( 220, 380, 270 ), # Biraz daha geride
         ]
 
         # Checkpoint algılama yarıçağı
@@ -196,3 +207,7 @@ class Track:
 
         # Mesafeyi döndür:
         return ( dx * dx + dy * dy ) ** 0.5
+    
+    # Listeden rastgele bir başlangıç pozisyonu seçip döndür:
+    def get_random_start_position( self ):
+        return random.choice( self.start_positions )
