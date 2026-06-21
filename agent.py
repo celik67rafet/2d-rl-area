@@ -1,6 +1,9 @@
 # Rastgele aksiyon seçmek için random modülünü içe aktar:
 import random
 
+# Grafikleri çizmek için matplotlib kütüphanesini içe aktar:
+import matplotlib.pyplot as plt
+
 # Q-table'ı dosyaya kaydetmek ve dosyadan okumak için pickle modülünü içe aktar:
 import pickle
 
@@ -15,6 +18,11 @@ class Agent:
 
         # Q-Learning Table:
         self.q_table = {}
+        
+        # Eğitim istatikstiklerini tutacağımız geçmiş listeleri:
+        self.score_history = []
+
+        self.epsilon_history = []
 
         # Keşif oranı:
         self.epsilon = 0.2
@@ -84,6 +92,13 @@ class Agent:
 
     # Episode sonunda skoru değerlendir:
     def learn_from_episode( self, score ):
+
+        # Mevcut skoru geçmiş listesine ekle:
+        self.score_history.append( score )
+
+        # O anki epsilon değerini de geçmiş listesine ekle:
+        self.epsilon_history.append( self.epsilon )
+
         # Eğer bu skoru şimdiye kadarki en iyi skorsa kaydet:
         if score > self.best_score:
             self.best_score = score
@@ -195,3 +210,31 @@ class Agent:
 
             # Epsilon'u minimum değerde sabitliyoruz ( sınırı koruyoruz ):
             self.epsilon = min_epsilon
+
+    # Eğitim istatistiklerini ekrana grafik olarak çiz:
+    def plot_statistics( self ):
+
+        # Eğer veri yoksa ( henüz ilk episode bitmediyse ) çizim yapma:
+        if not self.score_history:
+            return
+        
+        # İki alt grafikli ( skor ve epsilon ) yeni bir pencere oluştur:
+        fig, ( ax1, ax2 ) = plt.subplots( 2, 1, figsize = ( 10, 8 ) )
+
+        # 1. Grafik: Bölüm başına alınan skorlar ( Mavi çizgi )
+        ax1.plot( self.score_history, color = 'blue' )
+        ax1.set_title( "Bolum ( Episode ) Basina Skor" )
+        ax1.set_ylabel( "Skor" )
+        ax1.grid( True ) # Arka plana ızgara ekle
+
+        # 2. Grafik: Epsilon'un zamanla azalmasi ( Kırmızı çizgi )
+        ax2.plot( self.epsilon_history, color='red' )
+        ax2.set_title( "Epsilon ( Kesif Orani ) Degisimi" )
+        ax2.set_xlabel( "Bolum (Episode)" )
+        ax2.grid( True )
+
+        # Grafikleri birbiriyle çakışmayacak şekilde düzenle:
+        plt.tight_layout()
+
+        # Çizilen grafiği ekranda göster:
+        plt.show()

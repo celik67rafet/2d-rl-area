@@ -471,3 +471,7 @@ while running:
 
 # pygame'i düzgün şekilde kapat:
 pygame.quit()
+
+
+# Pygamke kapandıktan hemen sonra, eğitim istatistikleri grafiğini ekrana çiz:
+agent.plot_statistics()
