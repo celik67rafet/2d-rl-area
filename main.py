@@ -34,6 +34,14 @@ agent = Agent()
 # Daha önceki öğrenmeyi yükle:
 agent.load_q_table()
 
+# ---- OTOPİLOT ( TEST ) MODU AYARI ----
+# Bu ayar True olduğunda ajan yeni bir şey öğrenmez, sadece bildiklerini uygular.
+TEST_MODE = False
+
+if TEST_MODE:
+    agent.epsilon = 0.0 # Rastgele hareket etmeyi tamamen kapat
+    agent.epsilon_min = 0.0 # Epsilon'un artmasını engelle
+
 # Program kapanırken Q-table'ı otomatik kaydet:
 atexit.register( agent.save_q_table )
 
@@ -239,8 +247,9 @@ while running:
         # Bu frame sonunda oluşan gerçek reward değerini göster:
         current_reward = reward
 
-        # q tablosunu güncelle:
-        agent.update_q_value( state, action, reward, next_state, False )
+        if not TEST_MODE:
+            # q tablosunu güncelle:
+            agent.update_q_value( state, action, reward, next_state, False )
         
     # Pisti ekrana çiz:
     track.draw( screen, next_checkpoint_index )
@@ -396,8 +405,9 @@ while running:
         # Bu frame sonunda oluşan gerçek reward değerini göster:
         current_reward = reward
 
-        # Çarpışmaya sebep olan aksiyonu cezalandır:
-        agent.update_q_value( state, action, reward, next_state, True )
+        if not TEST_MODE:
+            # Çarpışmaya sebep olan aksiyonu cezalandır:
+            agent.update_q_value( state, action, reward, next_state, True )
 
         if crash_time == 0:
             crash_time = pygame.time.get_ticks()
@@ -461,13 +471,15 @@ while running:
                 print( f"Yeni en iyi skor ({score})! Model yedekleniyor..." )
 
                 # Sadece bu başarılı modele özel bir isimli Q-tablosunu kaydet:
-                agent.save_q_table("best_model.pkl")
+                agent.save_q_table("best_model.pth")
 
-            # Episode skorunu ajana bildir:
-            agent.learn_from_episode( score )
+            # Eğer test modunda değilsek bölüm sonu uzun hafıza eğitimini yap:
+            if not TEST_MODE:
+                # Episode skorunu ajana bildir:
+                agent.learn_from_episode( score )
 
-            # yeni stratejiye göre keşif oranını alınan skora göre güncelliyoruz:
-            agent.decay_epsilon( score )
+                # yeni stratejiye göre keşif oranını alınan skora göre güncelliyoruz:
+                agent.decay_epsilon( score )
             
             # Skoru sıfırla:
             score = 0

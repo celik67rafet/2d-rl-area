@@ -46,7 +46,7 @@ class Agent:
         self.memory.append(( state, action, reward, next_state, done ))
 
     # Bölüm ( Episode ) bittiğinde hafızadaki eski anılardan toplu ders çıkar:
-    def train_kong_memory( self ):
+    def train_long_memory( self ):
         # Hafızada yeterli anı varsa BATCH_SIZE kadar rastgele örnek al, yoksa hepsini al
         if len( self.memory ) > BATCH_SIZE:
             mini_sample = random.sample( self.memory, BATCH_SIZE )
@@ -84,7 +84,7 @@ class Agent:
     # Bölüm bittiğinde uzun hafızayı eğit ve istatistikleri kaydet:
     def learn_from_episode( self, score ):
         # Bölüm bittiği için geçmiş anılardan toplu bir eğitim ( Experience Replay ) yap
-        self.train_kong_memory()
+        self.train_long_memory()
 
         # İstatistikleri kaydet:
         self.score_history.append( score )
