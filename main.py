@@ -49,9 +49,6 @@ car = Car( start_x, start_y )
 # Aracın yönünü de rastgele gelen açıya ayarlıyoruz:
 car.angle = start_angle
 
-# Araç nesnesini oluşturuyoruz:
-car = Car( 220, 360 )
-
 # Ana döngü kontrol değişkeni:
 running = True
 
@@ -137,8 +134,11 @@ while running:
             + ( car.y - old_y ) ** 2
         ) ** 0.5
 
-        # Varsayılan ödül: pistte kaldığı için küçük pozitif ödül:
-        reward = 0.1
+        # ZAMAN ( STEP ) CEZASI:
+        # Eski sistemdeki +0.1 hayatta kalma ödülünü -0.1 cezasına çeviriyoruz.
+        # Ajan artık pistte kaldığı her ms puan kaybedeceğini anlayacak.
+        # Bu eksi puan onu büyük ödüllere en hızlı şekilde ulaşmaya zorlayacak:
+        reward = -0.1
 
         # Geri gitme cezası:
         if action == 1:
