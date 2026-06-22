@@ -15,6 +15,10 @@ from track import Track
 # pygame'i başlat
 pygame.init()
 
+# PYGAME BUG ÇÖZÜMÜ VE HIZ OPTİMİZASYONU:
+# Sadece pencereyi kapatma olayına izin ver. Fare, klavye vb. dinlemeyi kapat.
+pygame.event.set_allowed([ pygame.QUIT ])
+
 # Pencere boyutları:
 WIDTH = 1280
 HEIGHT = 720
@@ -32,7 +36,7 @@ clock = pygame.time.Clock()
 agent = Agent()
 
 # Daha önceki öğrenmeyi yükle:
-agent.load_q_table()
+agent.load_q_table( "best_model.pth" )
 
 # ---- OTOPİLOT ( TEST ) MODU AYARI ----
 # Bu ayar True olduğunda ajan yeni bir şey öğrenmez, sadece bildiklerini uygular.
@@ -46,7 +50,7 @@ if TEST_MODE:
 atexit.register( agent.save_q_table )
 
 # Pist nesnesini oluştur:
-track = Track()
+track = Track( level = 2 )
 
 # Pistten rastgele bir başlangıç noktası al ( x, y ve açı ):
 start_x, start_y, start_angle = track.get_random_start_position()
@@ -101,8 +105,14 @@ previous_checkpoint_distance = None
 # Ana uygulama döngüsü:
 while running:
 
+    # KRONİK PYGAME/WINDOWS BUG KALKANI:
+    try:
+        events = pygame.event.get()
+    except Exception:
+        events = []
+
     # Kullanıcı olaylarını işle:
-    for event in pygame.event.get():
+    for event in events:
 
         # Pencere kapatılmak istendiğinde çık:
         if event.type == pygame.QUIT:
